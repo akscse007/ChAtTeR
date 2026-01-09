@@ -1,5 +1,8 @@
 const express = require("express");
-const dotenv = require("dotenv");
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
