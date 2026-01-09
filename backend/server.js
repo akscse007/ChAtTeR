@@ -1,4 +1,8 @@
 const express = require("express");
+const http = require("http");
+const path = require("path");
+
+// Load env only in development
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -8,13 +12,8 @@ const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
-const path = require("path");
-const http = require("http");
 
-// Load env variables
-dotenv.config();
-
-// Connect to DB
+// Connect DB
 connectDB();
 
 const app = express();
@@ -29,16 +28,14 @@ app.use("/api/message", messageRoutes);
 const __dirname1 = path.resolve();
 
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname1, "/frontend/build")));
+  app.use(express.static(path.join(__dirname1, "frontend/build")));
 
   app.get("*", (req, res) =>
-    res.sendFile(
-      path.resolve(__dirname1, "frontend", "build", "index.html")
-    )
+    res.sendFile(path.resolve(__dirname1, "frontend", "build", "index.html"))
   );
 } else {
   app.get("/", (req, res) => {
-    res.send("API is running..");
+    res.send("API is running...");
   });
 }
 // ---------------- DEPLOYMENT ----------------
@@ -52,35 +49,32 @@ const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
 server.listen(PORT, () => {
-  console.log(`Server running on PORT ${PORT}...`);
+  console.log(`Server running on PORT ${PORT}`);
 });
 
 // ---------------- SOCKET.IO ----------------
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL,
+    credentials: true,
   },
 });
 
 io.on("connection", (socket) => {
   console.log("Connected to socket.io");
 
-  // User setup (optional, kept for future use)
   socket.on("setup", (userData) => {
-    if (!userData || !userData._id) return;
+    if (!userData?._id) return;
     socket.join(userData._id.toString());
     socket.emit("connected");
   });
 
-  // Join chat room
   socket.on("join chat", (roomId) => {
     if (!roomId) return;
     socket.join(roomId.toString());
-    console.log("User joined chat room:", roomId);
   });
 
-  // Typing indicators
   socket.on("typing", (roomId) => {
     socket.in(roomId.toString()).emit("typing");
   });
@@ -89,14 +83,9 @@ io.on("connection", (socket) => {
     socket.in(roomId.toString()).emit("stop typing");
   });
 
-  // ✅ OPTION B: MESSAGE DELIVERY VIA CHAT ROOM
   socket.on("new message", (newMessageRecieved) => {
-    const chat = newMessageRecieved.chat;
-
-    if (!chat || !chat._id) {
-      console.log("Chat or chat._id missing");
-      return;
-    }
+    const chat = newMessageRecieved?.chat;
+    if (!chat?._id) return;
 
     socket
       .in(chat._id.toString())
