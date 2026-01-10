@@ -5,7 +5,6 @@ import "./styles.css";
 import { IconButton, Spinner, useToast } from "@chakra-ui/react";
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
@@ -14,9 +13,13 @@ import animationData from "../animations/typing.json";
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
+import API from "../config/api";
 
-const ENDPOINT = "http://localhost:5000";
-var socket, selectedChatCompare;
+/* ✅ FIXED: PRODUCTION SOCKET ENDPOINT */
+const ENDPOINT = "https://chatter-backend-9ujs.onrender.com";
+
+let socket;
+let selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
@@ -31,7 +34,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const defaultOptions = {
     loop: true,
     autoplay: true,
-    animationData: animationData,
+    animationData,
     rendererSettings: {
       preserveAspectRatio: "xMidYMid slice",
     },
@@ -45,70 +48,65 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     setNotification,
   } = ChatState();
 
-  // ---------------- FETCH MESSAGES ----------------
+  // ---------- FETCH MESSAGES ----------
   const fetchMessages = async () => {
     if (!selectedChat) return;
 
     try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
       setLoading(true);
 
-      const { data } = await axios.get(
+      const { data } = await API.get(
         `/api/message/${selectedChat._id}`,
-        config
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
       );
 
       setMessages(data);
-      setLoading(false);
-
       socket.emit("join chat", selectedChat._id);
     } catch (error) {
       toast({
-        title: "Error Occured!",
-        description: "Failed to Load the Messages",
+        title: "Error Occurred!",
+        description: "Failed to load messages",
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "bottom",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ---------------- SEND MESSAGE (FIXED) ----------------
+  // ---------- SEND MESSAGE ----------
   const sendMessage = async (event) => {
     if (event.key === "Enter" && newMessage) {
       socket.emit("stop typing", selectedChat._id);
 
       try {
-        const config = {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user.token}`,
-          },
-        };
-
         setNewMessage("");
 
-        const { data } = await axios.post(
+        const { data } = await API.post(
           "/api/message",
           {
             content: newMessage,
-            chatId: selectedChat._id, // ✅ FIXED HERE
+            chatId: selectedChat._id,
           },
-          config
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
+          }
         );
 
         socket.emit("new message", data);
         setMessages((prev) => [...prev, data]);
       } catch (error) {
         toast({
-          title: "Error Occured!",
-          description: "Failed to send the Message",
+          title: "Error Occurred!",
+          description: "Failed to send message",
           status: "error",
           duration: 5000,
           isClosable: true,
@@ -118,44 +116,51 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     }
   };
 
-  // ---------------- SOCKET INIT ----------------
+  // ---------- SOCKET INIT ----------
   useEffect(() => {
-    socket = io(ENDPOINT);
+    socket = io(ENDPOINT, {
+      transports: ["websocket"],
+    });
+
     socket.emit("setup", user);
 
     socket.on("connected", () => setSocketConnected(true));
     socket.on("typing", () => setIsTyping(true));
     socket.on("stop typing", () => setIsTyping(false));
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  // ---------------- CHAT CHANGE ----------------
+  // ---------- CHAT CHANGE ----------
   useEffect(() => {
     fetchMessages();
     selectedChatCompare = selectedChat;
   }, [selectedChat]);
 
-  // ---------------- MESSAGE LISTENER (FIXED) ----------------
+  // ---------- MESSAGE LISTENER ----------
   useEffect(() => {
-    socket.on("message recieved", (newMessageRecieved) => {
+    socket.on("message received", (newMessageReceived) => {
       if (
         !selectedChatCompare ||
-        selectedChatCompare._id !== newMessageRecieved.chat._id
+        selectedChatCompare._id !== newMessageReceived.chat._id
       ) {
-        if (!notification.includes(newMessageRecieved)) {
-          setNotification([newMessageRecieved, ...notification]);
+        if (!notification.find((n) => n._id === newMessageReceived._id)) {
+          setNotification([newMessageReceived, ...notification]);
           setFetchAgain(!fetchAgain);
         }
       } else {
-        setMessages((prev) => [...prev, newMessageRecieved]);
+        setMessages((prev) => [...prev, newMessageReceived]);
       }
     });
 
     return () => {
-      socket.off("message recieved");
+      socket.off("message received");
     };
   }, [notification, fetchAgain]);
 
-  // ---------------- TYPING HANDLER ----------------
+  // ---------- TYPING ----------
   const typingHandler = (e) => {
     setNewMessage(e.target.value);
 
@@ -166,21 +171,19 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       socket.emit("typing", selectedChat._id);
     }
 
-    let lastTypingTime = new Date().getTime();
-    let timerLength = 3000;
+    const lastTypingTime = new Date().getTime();
+    const timerLength = 3000;
 
     setTimeout(() => {
-      let timeNow = new Date().getTime();
-      let timeDiff = timeNow - lastTypingTime;
-
-      if (timeDiff >= timerLength && typing) {
+      const timeNow = new Date().getTime();
+      if (timeNow - lastTypingTime >= timerLength && typing) {
         socket.emit("stop typing", selectedChat._id);
         setTyping(false);
       }
     }, timerLength);
   };
 
-  // ---------------- UI ----------------
+  // ---------- UI ----------
   return (
     <>
       {selectedChat ? (

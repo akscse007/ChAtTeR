@@ -16,12 +16,17 @@ connectDB();
 
 const app = express();
 
+/* 🔑 IMPORTANT FOR RENDER */
+app.set("trust proxy", 1);
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://chatter-frontend-cqvl.onrender.com",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://chatter-frontend-cqvl.onrender.com",
-    ],
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -45,17 +50,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
-server.listen(PORT, () => {
-  console.log(`Server running on PORT ${PORT}`);
-});
-
+/* 🔑 SOCKET.IO MUST BE CREATED BEFORE listen */
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://chatter-frontend-cqvl.onrender.com",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -94,4 +93,8 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
+});
+
+server.listen(PORT, () => {
+  console.log(`Server running on PORT ${PORT}`);
 });
