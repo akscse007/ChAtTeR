@@ -30,7 +30,7 @@ import { Effect } from "react-notification-badge";
 import { getSender } from "../../config/ChatLogics";
 import UserListItem from "../userAvatar/UserListItem";
 import { ChatState } from "../../Context/ChatProvider";
-import API from "../../config/api"; // 🔥 FIX 1
+import API from "../../config/api";
 
 function SideDrawer() {
   const [search, setSearch] = useState("");
@@ -68,7 +68,7 @@ function SideDrawer() {
       return;
     }
 
-    if (!user || !user.token) {
+    if (!user?.token) {
       toast({
         title: "Not authenticated",
         status: "error",
@@ -82,21 +82,17 @@ function SideDrawer() {
     try {
       setLoading(true);
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
       const { data } = await API.get(
         `/api/user?search=${search}`,
-        config
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
       );
 
-      setSearchResult(data);
-      setLoading(false);
+      setSearchResult(data || []);
     } catch (error) {
-      setLoading(false);
       toast({
         title: "Error occurred",
         description: "Failed to load search results",
@@ -105,37 +101,41 @@ function SideDrawer() {
         isClosable: true,
         position: "bottom-left",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const accessChat = async (userId) => {
-    if (!user || !user.token) return;
+    if (!user?.token) return;
 
     try {
       setLoadingChat(true);
 
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
       const { data } = await API.post(
         `/api/chat`,
         { userId },
-        config
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
       );
 
-      if (!chats.find((c) => c._id === data._id)) {
-        setChats([data, ...chats]);
+      if (!data || !data._id) {
+        throw new Error("Invalid chat data received");
       }
 
+      setChats((prevChats) =>
+        prevChats.find((c) => c._id === data._id)
+          ? prevChats
+          : [data, ...prevChats]
+      );
+
       setSelectedChat(data);
-      setLoadingChat(false);
       onClose();
     } catch (error) {
-      setLoadingChat(false);
       toast({
         title: "Error fetching the chat",
         description: error.message,
@@ -144,6 +144,8 @@ function SideDrawer() {
         isClosable: true,
         position: "bottom-left",
       });
+    } finally {
+      setLoadingChat(false);
     }
   };
 
@@ -208,8 +210,8 @@ function SideDrawer() {
               <Avatar
                 size="sm"
                 cursor="pointer"
-                name={user.name}
-                src={user.pic}
+                name={user?.name}
+                src={user?.pic}
               />
             </MenuButton>
             <MenuList>
@@ -243,11 +245,11 @@ function SideDrawer() {
             {loading ? (
               <ChatLoading />
             ) : (
-              searchResult.map((user) => (
+              searchResult.map((u) => (
                 <UserListItem
-                  key={user._id}
-                  user={user}
-                  handleFunction={() => accessChat(user._id)}
+                  key={u._id}
+                  user={u}
+                  handleFunction={() => accessChat(u._id)}
                 />
               ))
             )}

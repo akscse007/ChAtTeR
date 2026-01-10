@@ -3,14 +3,19 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const ChatContext = createContext();
 
 const ChatProvider = ({ children }) => {
-  const [selectedChat, setSelectedChat] = useState();
-  const [user, setUser] = useState();
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [user, setUser] = useState(null);
   const [notification, setNotification] = useState([]);
-  const [chats, setChats] = useState();
+  const [chats, setChats] = useState([]); // 🔥 FIXED
 
   useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-    setUser(userInfo || null);
+    try {
+      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+      setUser(userInfo || null);
+    } catch (err) {
+      console.error("Invalid userInfo in localStorage", err);
+      setUser(null);
+    }
   }, []);
 
   return (
