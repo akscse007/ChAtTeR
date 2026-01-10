@@ -94,7 +94,7 @@ const Signup = () => {
         name,
         email,
         password,
-        pic,
+        pic: pic || undefined,
       });
 
       toast({
@@ -104,6 +104,9 @@ const Signup = () => {
         isClosable: true,
         position: "bottom",
       });
+      if (!data.token) {
+        throw new Error("Signup succeeded but token missing");
+    }
 
       localStorage.setItem("userInfo", JSON.stringify(data));
       setUser(data);

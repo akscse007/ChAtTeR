@@ -21,7 +21,6 @@ import { BellIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { Avatar } from "@chakra-ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
 import { useToast } from "@chakra-ui/toast";
 import ChatLoading from "../ChatLoading";
 import { Spinner } from "@chakra-ui/spinner";
@@ -31,6 +30,7 @@ import { Effect } from "react-notification-badge";
 import { getSender } from "../../config/ChatLogics";
 import UserListItem from "../userAvatar/UserListItem";
 import { ChatState } from "../../Context/ChatProvider";
+import API from "../../config/api"; // 🔥 FIX 1
 
 function SideDrawer() {
   const [search, setSearch] = useState("");
@@ -68,6 +68,17 @@ function SideDrawer() {
       return;
     }
 
+    if (!user || !user.token) {
+      toast({
+        title: "Not authenticated",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom-left",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -77,7 +88,7 @@ function SideDrawer() {
         },
       };
 
-      const { data } = await axios.get(
+      const { data } = await API.get(
         `/api/user?search=${search}`,
         config
       );
@@ -98,6 +109,8 @@ function SideDrawer() {
   };
 
   const accessChat = async (userId) => {
+    if (!user || !user.token) return;
+
     try {
       setLoadingChat(true);
 
@@ -108,7 +121,7 @@ function SideDrawer() {
         },
       };
 
-      const { data } = await axios.post(
+      const { data } = await API.post(
         `/api/chat`,
         { userId },
         config
