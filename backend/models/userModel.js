@@ -3,36 +3,49 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = mongoose.Schema(
   {
-    name: { type: "String", required: true },
-    email: { type: "String", unique: true, required: true },
-    password: { type: "String", required: true },
-    pic: {
-      type: "String",
+    name: {
+      type: String,
       required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    pic: {
+      type: String,
       default:
         "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
     },
     isAdmin: {
       type: Boolean,
-      required: true,
       default: false,
     },
   },
-  { timestaps: true }
+  {
+    timestamps: true,
+  }
 );
 
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
-
+// 🔐 HASH PASSWORD BEFORE SAVE
 userSchema.pre("save", async function (next) {
-  if (!this.isModified) {
-    next();
+  if (!this.isModified("password")) {
+    return next();
   }
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
+
+// 🔐 COMPARE PASSWORD
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 const User = mongoose.model("User", userSchema);
 
