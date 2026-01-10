@@ -41,9 +41,9 @@ const Login = () => {
         },
       };
       const { data } = await API.post(
-            "/api/user/login",
-           { email, password },
-            config
+          "/api/users/login",
+          { email, password },
+        config
       );
 
 
