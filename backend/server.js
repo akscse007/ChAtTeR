@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const cors = require("cors");
 
 // Load env only in development
 if (process.env.NODE_ENV !== "production") {
@@ -12,27 +13,42 @@ const chatRoutes = require("./routes/chatRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
-// Connect to MongoDB
+// ---------------- CONNECT DB ----------------
 connectDB();
 
+// ---------------- APP INIT ----------------
 const app = express();
-app.use(express.json());
 
-// API routes
+// ---------------- CORS (🔥 THIS FIXES SIGNUP / LOGIN) ----------------
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://chatter-frontend-cqvl.onrender.com",
+    ],
+    credentials: true,
+  })
+);
+
+// ---------------- BODY PARSERS ----------------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ---------------- API ROUTES ----------------
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
 
-// Health check (important for Render)
+// ---------------- HEALTH CHECK ----------------
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// Error handling
+// ---------------- ERROR HANDLING ----------------
 app.use(notFound);
 app.use(errorHandler);
 
-// Create server
+// ---------------- SERVER ----------------
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
@@ -44,7 +60,10 @@ server.listen(PORT, () => {
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: [
+      "http://localhost:3000",
+      "https://chatter-frontend-cqvl.onrender.com",
+    ],
     credentials: true,
   },
 });
@@ -71,13 +90,13 @@ io.on("connection", (socket) => {
     socket.in(roomId.toString()).emit("stop typing");
   });
 
-  socket.on("new message", (newMessageRecieved) => {
-    const chat = newMessageRecieved?.chat;
+  socket.on("new message", (newMessageReceived) => {
+    const chat = newMessageReceived?.chat;
     if (!chat?._id) return;
 
     socket
       .in(chat._id.toString())
-      .emit("message recieved", newMessageRecieved);
+      .emit("message recieved", newMessageReceived);
   });
 
   socket.on("disconnect", () => {
