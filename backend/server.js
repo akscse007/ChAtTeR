@@ -2,7 +2,6 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 
-// Load env only in development
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -13,13 +12,10 @@ const chatRoutes = require("./routes/chatRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
-// ---------------- CONNECT DB ----------------
 connectDB();
 
-// ---------------- APP INIT ----------------
 const app = express();
 
-// ---------------- CORS (🔥 THIS FIXES SIGNUP / LOGIN) ----------------
 app.use(
   cors({
     origin: [
@@ -27,28 +23,25 @@ app.use(
       "https://chatter-frontend-cqvl.onrender.com",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ---------------- BODY PARSERS ----------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ---------------- API ROUTES ----------------
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
 
-// ---------------- HEALTH CHECK ----------------
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// ---------------- ERROR HANDLING ----------------
 app.use(notFound);
 app.use(errorHandler);
 
-// ---------------- SERVER ----------------
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
@@ -56,7 +49,6 @@ server.listen(PORT, () => {
   console.log(`Server running on PORT ${PORT}`);
 });
 
-// ---------------- SOCKET.IO ----------------
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
@@ -96,7 +88,7 @@ io.on("connection", (socket) => {
 
     socket
       .in(chat._id.toString())
-      .emit("message recieved", newMessageReceived);
+      .emit("message received", newMessageReceived);
   });
 
   socket.on("disconnect", () => {

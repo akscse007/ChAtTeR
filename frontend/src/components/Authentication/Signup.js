@@ -4,7 +4,8 @@ import { Input, InputGroup, InputRightElement } from "@chakra-ui/input";
 import { VStack } from "@chakra-ui/layout";
 import { useToast } from "@chakra-ui/toast";
 import { useState } from "react";
-import { useHistory } from "react-router";
+import { useNavigate } from "react-router-dom";
+import { ChatState } from "../../Context/ChatProvider";
 import API from "../../config/api";
 
 const Signup = () => {
@@ -17,7 +18,8 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
 
   const toast = useToast();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { setUser } = ChatState();
 
   // 🔹 CLOUDINARY UPLOAD (NON-BLOCKING)
   const postDetails = async (file) => {
@@ -51,7 +53,6 @@ const Signup = () => {
       const result = await res.json();
       setPic(result.secure_url);
     } catch (err) {
-      console.error(err);
       toast({
         title: "Avatar upload failed, continuing without avatar",
         status: "warning",
@@ -89,15 +90,12 @@ const Signup = () => {
     try {
       setLoading(true);
 
-      const { data } = await API.post(
-        "/api/user",
-        { name, email, password, pic },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const { data } = await API.post("/api/user", {
+        name,
+        email,
+        password,
+        pic,
+      });
 
       toast({
         title: "Registration successful",
@@ -108,8 +106,9 @@ const Signup = () => {
       });
 
       localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
       setLoading(false);
-      history.push("/chats");
+      navigate("/chats");
     } catch (error) {
       setLoading(false);
       toast({

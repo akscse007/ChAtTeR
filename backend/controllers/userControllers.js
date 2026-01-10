@@ -4,7 +4,7 @@ const generateToken = require("../config/generateToken");
 
 //@description     Get or Search all users
 //@route           GET /api/user?search=
-//@access          Public
+//@access          Protected
 const allUsers = asyncHandler(async (req, res) => {
   const keyword = req.query.search
     ? {
@@ -15,7 +15,9 @@ const allUsers = asyncHandler(async (req, res) => {
       }
     : {};
 
-  const users = await User.find(keyword).find({ _id: { $ne: req.user._id } });
+  const users = await User.find(keyword).find({
+    _id: { $ne: req.user._id },
+  });
   res.send(users);
 });
 
@@ -27,7 +29,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (!name || !email || !password) {
     res.status(400);
-    throw new Error("Please Enter all the Feilds");
+    throw new Error("Please Enter all the Fields");
   }
 
   const userExists = await User.findOne({ email });
@@ -41,7 +43,9 @@ const registerUser = asyncHandler(async (req, res) => {
     name,
     email,
     password,
-    pic,
+    pic:
+      pic ||
+      "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
   });
 
   if (user) {
@@ -55,12 +59,12 @@ const registerUser = asyncHandler(async (req, res) => {
     });
   } else {
     res.status(400);
-    throw new Error("User not found");
+    throw new Error("User creation failed");
   }
 });
 
 //@description     Auth the user
-//@route           POST /api/users/login
+//@route           POST /api/user/login
 //@access          Public
 const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;

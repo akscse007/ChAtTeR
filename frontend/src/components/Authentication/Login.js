@@ -4,7 +4,7 @@ import { Input, InputGroup, InputRightElement } from "@chakra-ui/input";
 import { VStack } from "@chakra-ui/layout";
 import { useState } from "react";
 import { useToast } from "@chakra-ui/react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ChatState } from "../../Context/ChatProvider";
 import API from "../../config/api";
 
@@ -15,7 +15,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const toast = useToast();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { setUser } = ChatState();
 
   const submitHandler = async () => {
@@ -33,15 +33,10 @@ const Login = () => {
     try {
       setLoading(true);
 
-      const { data } = await API.post(
-        "/api/user/login", // ✅ CORRECT ROUTE
-        { email, password },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const { data } = await API.post("/api/user/login", {
+        email,
+        password,
+      });
 
       toast({
         title: "Login successful",
@@ -54,7 +49,7 @@ const Login = () => {
       setUser(data);
       localStorage.setItem("userInfo", JSON.stringify(data));
       setLoading(false);
-      history.push("/chats");
+      navigate("/chats");
     } catch (error) {
       setLoading(false);
       toast({
