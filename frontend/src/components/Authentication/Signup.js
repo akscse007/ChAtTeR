@@ -13,17 +13,62 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmpassword, setConfirmpassword] = useState("");
+  const [pic, setPic] = useState("");
   const [loading, setLoading] = useState(false);
 
   const toast = useToast();
   const history = useHistory();
 
+  // 🔹 CLOUDINARY UPLOAD (NON-BLOCKING)
+  const postDetails = async (file) => {
+    if (!file) return;
+
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      toast({
+        title: "Only JPG or PNG images allowed",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom",
+      });
+      return;
+    }
+
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      data.append("upload_preset", "avatar");
+      data.append("cloud_name", "dmyehk0id");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/dmyehk0id/image/upload",
+        {
+          method: "POST",
+          body: data,
+        }
+      );
+
+      const result = await res.json();
+      setPic(result.secure_url);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Avatar upload failed, continuing without avatar",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom",
+      });
+    }
+  };
+
+  // 🔹 SIGNUP
   const submitHandler = async () => {
     if (!name || !email || !password || !confirmpassword) {
       toast({
         title: "Please fill all the fields",
         status: "warning",
-        duration: 4000,
+        duration: 3000,
         isClosable: true,
         position: "bottom",
       });
@@ -34,7 +79,7 @@ const Signup = () => {
       toast({
         title: "Passwords do not match",
         status: "warning",
-        duration: 4000,
+        duration: 3000,
         isClosable: true,
         position: "bottom",
       });
@@ -46,7 +91,7 @@ const Signup = () => {
 
       const { data } = await API.post(
         "/api/user",
-        { name, email, password },
+        { name, email, password, pic },
         {
           headers: {
             "Content-Type": "application/json",
@@ -108,12 +153,20 @@ const Signup = () => {
 
       <FormControl isRequired>
         <FormLabel>Confirm Password</FormLabel>
-        <InputGroup>
-          <Input
-            type={show ? "text" : "password"}
-            onChange={(e) => setConfirmpassword(e.target.value)}
-          />
-        </InputGroup>
+        <Input
+          type={show ? "text" : "password"}
+          onChange={(e) => setConfirmpassword(e.target.value)}
+        />
+      </FormControl>
+
+      <FormControl>
+        <FormLabel>Avatar (optional)</FormLabel>
+        <Input
+          type="file"
+          accept="image/*"
+          p={1.5}
+          onChange={(e) => postDetails(e.target.files[0])}
+        />
       </FormControl>
 
       <Button
